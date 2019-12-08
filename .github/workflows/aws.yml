@@ -1,0 +1,155 @@
+# This workflow will build and push a new container image to Amazon ECR,
+# and then will deploy a new task definition to Amazon ECS, on every push
+# to the master branch.
+#
+# To use this workflow, you will need to complete the following set-up steps:
+#
+# 1. Create an ECR repository to store your images.
+#    For example: `aws ecr create-repository --repository-name my-ecr-repo --region us-east-2`.
+#    Replace the value of `ECR_REPOSITORY` in the workflow below with your repository's name.
+#    Replace the value of `aws-region` in the workflow below with your repository's region.
+#
+# 2. Create an ECS task definition, an ECS cluster, and an ECS service.
+#    For example, follow the Getting Started guide on the ECS console:
+#      https://us-east-2.console.aws.amazon.com/ecs/home?region=us-east-2#/firstRun
+#    Replace the values for `service` and `cluster` in the workflow below with your service and cluster names.
+#
+# 3. Store your ECS task definition as a JSON file in your repository.
+#    The format should follow the output of `aws ecs register-task-definition --generate-cli-skeleton`.
+#    Replace the value of `task-definition` in the workflow below with your JSON file's name.
+#    Replace the value of `container-name` in the workflow below with the name of the container
+#    in the `containerDefinitions` section of the task definition.
+#
+# 4. Store an IAM user access key in GitHub Actions secrets named `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+#    See the documentation for each action used below for the recommended IAM policies for this IAM user,
+#    and best practices on handling the access key credentials.
+
+on:
+  push:
+    branches:
+      - master
+
+name: Deploy to Amazon ECS
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-2
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        Amzn platform: my-ecr-repo
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build a docker container and
+        # push it to ECR so that it can
+        # be deployed to ECS.
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id: task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        container-name: sample-app
+        image: ${{ steps.build-image.outputs.image }}
+
+    - name: https://us-east-2.console.aws.amazon.com/ecs/home?region=us-east-2#/firstRun
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with: {
+  "Type" : "AWS::ECS::TaskDefinition",
+  "Properties" : {
+      "ContainerDefinitions" : [ ContainerDefinition, ... ],
+      "Cpu" : String,
+      "ExecutionRoleArn" : String,
+      "Family" : String,
+      "InferenceAccelerators" : [ InferenceAccelerator, ... ],
+      "IpcMode" : String,
+      "Memory" : String,
+      "NetworkMode" : String,
+      "PidMode" : String,
+      "PlacementConstraints" : [ TaskDefinitionPlacementConstraint, ... ],
+      "ProxyConfiguration" : ProxyConfiguration,
+      "RequiresCompatibilities" : [ String, ... ],
+      "Tags" : [ Tag, ... ],
+      "TaskRoleArn" : String,
+      "Volumes" : [ Volume, ... ]
+    }
+}
+
+      
+        Cluster: [root@ask-03 ~]# ccs -h node1 --lsserviceopts
+service - Defines a service (resource group).
+ASEHAagent - Sybase ASE Failover Instance
+SAPDatabase - SAP database resource agent
+SAPInstance - SAP instance resource agent
+apache - Defines an Apache web server
+clusterfs - Defines a cluster file system mount.
+fs - Defines a file system mount.
+ip - This is an IP address.
+lvm - LVM Failover script
+mysql - Defines a MySQL database server
+named - Defines an instance of named server
+netfs - Defines an NFS/CIFS file system mount.
+nfsclient - Defines an NFS client.
+nfsexport - This defines an NFS export.
+nfsserver - This defines an NFS server resource.
+openldap - Defines an Open LDAP server
+oracledb - Oracle 10g Failover Instance
+orainstance - Oracle 10g Failover Instance
+oralistener - Oracle 10g Listener Instance
+postgres-8 - Defines a PostgreSQL server
+samba - Dynamic smbd/nmbd resource agent
+script - LSB-compliant init script as a clustered resource.
+tomcat-6 - Defines a Tomcat server
+vm - Defines a Virtual Machine
+action - Overrides resource action timings for a resource instance.
+        Service: [root@ask-03 ~]# ccs -f node1 --lsserviceopts vm
+vm - Defines a Virtual Machine
+  Required Options:
+    name: Name
+  Optional Options:
+    domain: Cluster failover Domain
+    autostart: Automatic start after quorum formation
+    exclusive: Exclusive resource group
+    recovery: Failure recovery policy
+    migration_mapping: memberhost:targethost,memberhost:targethost ..
+    use_virsh: If set to 1, vm.sh will use the virsh command to manage virtual machines instead of xm. This is required when using non-Xen virtual machines (e.g. qemu / KVM).
+    xmlfile: Full path to libvirt XML file describing the domain.
+    migrate: Migration type (live or pause, default = live).
+    path: Path to virtual machine configuration files.
+    snapshot: Path to the snapshot directory where the virtual machine image will be stored.
+    depend: Top-level service this depends on, in service:name format.
+    depend_mode: Service dependency mode (soft or hard).
+    max_restarts: Maximum restarts for this service.
+    restart_expire_time: Restart expiration time; amount of time before a restart is forgotten.
+    status_program: Additional status check program
+    hypervisor: Hypervisor
+    hypervisor_uri: Hypervisor URI (normally automatic).
+    migration_uri: Migration URI (normally automatic).
+    __independent_subtree: Treat this and all children as an independent subtree.
+    __enforce_timeouts: Consider a timeout for operations as fatal.
+    __max_failures: Maximum number of failures before returning a failure to a status check.
+    __failure_expire_time: Amount of time before a failure is forgotten.
+    __max_restarts: Maximum number restarts for an independent subtree before giving up.
+    __restart_expire_time: Amount of time before a failure is forgotten for an independent subtree.
+        wait-for-service-stability: true
